@@ -14,12 +14,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from db import get_connection
 
 
-def analyze_conversion() -> dict:
+def analyze_conversion(date_filter: str | None = None) -> dict:
     conn = get_connection()
     results = {}
+    date_clause = f"AND date = '{date_filter}'" if date_filter else ""
 
     # ── Overall conversion ────────────────────────────────────────────────────
-    results["overall"] = conn.execute("""
+    results["overall"] = conn.execute(f"""
         SELECT
             COUNT(*)                                                          AS total_visitors,
             SUM(CASE WHEN is_buyer  THEN 1 ELSE 0 END)                        AS buyers,
@@ -27,31 +28,31 @@ def analyze_conversion() -> dict:
             ROUND(100.0 * SUM(CASE WHEN is_buyer THEN 1 ELSE 0 END)
                         / NULLIF(COUNT(*), 0), 2)                             AS conversion_rate_pct
         FROM tracks
-        WHERE NOT is_staff
+        WHERE NOT is_staff {date_clause}
     """).df().to_dict("records")[0]
 
     # ── Weekly conversion trend ───────────────────────────────────────────────
-    results["weekly_trend"] = conn.execute("""
+    results["weekly_trend"] = conn.execute(f"""
         SELECT
             DATE_TRUNC('week', entrance::DATE)                                AS week_start,
             COUNT(*)                                                          AS visitors,
             ROUND(100.0 * SUM(CASE WHEN is_buyer THEN 1 ELSE 0 END)
                         / NULLIF(COUNT(*), 0), 2)                             AS conversion_rate_pct
         FROM tracks
-        WHERE NOT is_staff AND entrance IS NOT NULL
+        WHERE NOT is_staff AND entrance IS NOT NULL {date_clause}
         GROUP BY week_start
         ORDER BY week_start
     """).df().to_dict("records")
 
     # ── Conversion by zone ───────────────────────────────────────────────────
-    results["zone_conversion"] = conn.execute("""
+    results["zone_conversion"] = conn.execute(f"""
         WITH tz AS (
             SELECT DISTINCT t.master_track_id, t.is_buyer, e.zone
             FROM tracks t
             JOIN events e ON t.master_track_id = e.master_track_id
             WHERE e.zone IS NOT NULL
               AND e.event_type = 'ZONE_ENTRY'
-              AND NOT t.is_staff
+              AND NOT t.is_staff {date_clause.replace('AND date', 'AND t.date')}
         )
         SELECT
             zone,
@@ -66,13 +67,13 @@ def analyze_conversion() -> dict:
     """).df().to_dict("records")
 
     # ── Conversion by POI ────────────────────────────────────────────────────
-    results["poi_conversion"] = conn.execute("""
+    results["poi_conversion"] = conn.execute(f"""
         WITH tp AS (
             SELECT DISTINCT t.master_track_id, t.is_buyer, e.poi_name
             FROM tracks t
             JOIN events e ON t.master_track_id = e.master_track_id
             WHERE e.poi_name IS NOT NULL
-              AND NOT t.is_staff
+              AND NOT t.is_staff {date_clause.replace('AND date', 'AND t.date')}
         )
         SELECT
             poi_name,
@@ -87,20 +88,20 @@ def analyze_conversion() -> dict:
     """).df().to_dict("records")
 
     # ── Hourly conversion ────────────────────────────────────────────────────
-    results["hourly_conversion"] = conn.execute("""
+    results["hourly_conversion"] = conn.execute(f"""
         SELECT
             EXTRACT(HOUR FROM entrance)                                        AS hour,
             COUNT(*)                                                           AS visitors,
             ROUND(100.0 * SUM(CASE WHEN is_buyer THEN 1 ELSE 0 END)
                         / NULLIF(COUNT(*), 0), 2)                              AS conversion_rate_pct
         FROM tracks
-        WHERE NOT is_staff AND entrance IS NOT NULL
+        WHERE NOT is_staff AND entrance IS NOT NULL {date_clause}
         GROUP BY hour
         ORDER BY hour
     """).df().to_dict("records")
 
     # ── Day-of-week conversion ───────────────────────────────────────────────
-    results["dow_conversion"] = conn.execute("""
+    results["dow_conversion"] = conn.execute(f"""
         SELECT
             DAYNAME(entrance::DATE)                                            AS day_of_week,
             DAYOFWEEK(entrance::DATE)                                          AS dow_num,
@@ -108,13 +109,13 @@ def analyze_conversion() -> dict:
             ROUND(100.0 * SUM(CASE WHEN is_buyer THEN 1 ELSE 0 END)
                         / NULLIF(COUNT(*), 0), 2)                              AS conversion_rate_pct
         FROM tracks
-        WHERE NOT is_staff AND entrance IS NOT NULL
+        WHERE NOT is_staff AND entrance IS NOT NULL {date_clause}
         GROUP BY day_of_week, dow_num
         ORDER BY dow_num
     """).df().to_dict("records")
 
     # ── Journey depth: buyers vs non-buyers ─────────────────────────────────
-    results["journey_depth"] = conn.execute("""
+    results["journey_depth"] = conn.execute(f"""
         SELECT
             is_buyer,
             ROUND(AVG(zone_count), 2)         AS avg_zones_visited,
@@ -122,12 +123,12 @@ def analyze_conversion() -> dict:
             ROUND(AVG(duration_seconds), 1)    AS avg_duration_seconds,
             ROUND(MEDIAN(duration_seconds), 1) AS median_duration_seconds
         FROM tracks
-        WHERE NOT is_staff
+        WHERE NOT is_staff {date_clause}
         GROUP BY is_buyer
     """).df().to_dict("records")
 
     # ── Top zones visited by non-buyers only ────────────────────────────────
-    results["nonbuyer_top_zones"] = conn.execute("""
+    results["nonbuyer_top_zones"] = conn.execute(f"""
         SELECT
             e.zone,
             COUNT(DISTINCT t.master_track_id) AS nonbuyer_visits
@@ -137,6 +138,7 @@ def analyze_conversion() -> dict:
           AND NOT t.is_buyer
           AND e.zone IS NOT NULL
           AND e.event_type = 'ZONE_ENTRY'
+          {date_clause.replace('AND date', 'AND t.date')}
         GROUP BY e.zone
         ORDER BY nonbuyer_visits DESC
         LIMIT 15

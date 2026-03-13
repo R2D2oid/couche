@@ -42,9 +42,10 @@ def _compute_occupancy(tracks_df: pd.DataFrame) -> pd.Series:
     return pd.Series(occ, index=df.index)
 
 
-def analyze_crowd() -> dict:
+def analyze_crowd(date_filter: str | None = None) -> dict:
     conn = get_connection()
     results = {}
+    date_clause = f"AND date = '{date_filter}'" if date_filter else ""
 
     # ── Door-shopper overall ─────────────────────────────────────────────────
     results["door_shoppers_overall"] = conn.execute(f"""
@@ -56,7 +57,7 @@ def analyze_crowd() -> dict:
                                        AND NOT is_buyer THEN 1 ELSE 0 END)
                         / NULLIF(COUNT(*), 0), 2)                                AS door_shopper_rate_pct
         FROM tracks
-        WHERE NOT is_staff
+        WHERE NOT is_staff {date_clause}
     """).df().to_dict("records")[0]
 
     # ── Door-shoppers by hour ────────────────────────────────────────────────
@@ -70,7 +71,7 @@ def analyze_crowd() -> dict:
                                        AND NOT is_buyer THEN 1 ELSE 0 END)
                         / NULLIF(COUNT(*), 0), 2)                               AS door_shopper_rate_pct
         FROM tracks
-        WHERE NOT is_staff AND entrance IS NOT NULL
+        WHERE NOT is_staff AND entrance IS NOT NULL {date_clause}
         GROUP BY hour
         ORDER BY hour
     """).df().to_dict("records")
@@ -87,17 +88,17 @@ def analyze_crowd() -> dict:
                                        AND NOT is_buyer THEN 1 ELSE 0 END)
                         / NULLIF(COUNT(*), 0), 2)                               AS door_shopper_rate_pct
         FROM tracks
-        WHERE NOT is_staff AND entrance IS NOT NULL
+        WHERE NOT is_staff AND entrance IS NOT NULL {date_clause}
         GROUP BY day_of_week, dow_num
         ORDER BY dow_num
     """).df().to_dict("records")
 
     # ── Load all tracks for occupancy computation ────────────────────────────
-    all_tracks = conn.execute("""
+    all_tracks = conn.execute(f"""
         SELECT master_track_id, entrance, exit, is_buyer, is_staff,
                duration_seconds, date
         FROM tracks
-        WHERE NOT is_staff AND entrance IS NOT NULL AND exit IS NOT NULL
+        WHERE NOT is_staff AND entrance IS NOT NULL AND exit IS NOT NULL {date_clause}
     """).df()
 
     all_tracks["entrance"] = pd.to_datetime(all_tracks["entrance"])

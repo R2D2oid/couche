@@ -100,6 +100,28 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "search_memory",
+            "description": (
+                "Search past daily summaries for situations semantically similar to a query. "
+                "Use for questions like 'did we see this before?', 'find similar days', "
+                "'what happened in November?', 'compare to past Tuesdays'. "
+                "Returns the most similar past days with their metrics."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Natural language description of what to search for"},
+                    "n":     {"type": "integer", "description": "Number of similar days to return (default 5)"},
+                    "dow":   {"type": "string",  "description": "Filter by day of week e.g. 'Tuesday' (optional)"},
+                    "month": {"type": "string",  "description": "Filter by month e.g. 'November' (optional)"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "run_sql",
             "description": (
                 "Run a custom SQL query on the tracks and events tables. "
@@ -282,6 +304,19 @@ def get_trend(metric="conversion_rate", weeks=8):
     return {"metric": metric, "unit": "weeks", "trend": list(reversed(rows))}
 
 
+def search_memory(query: str, n: int = 5, dow: str | None = None, month: str | None = None):
+    try:
+        from memory import search_similar
+        where = {}
+        if dow:
+            where["dow"] = dow
+        if month:
+            where["month"] = month
+        return search_similar(query, n=n, where=where if where else None)
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def run_sql(sql):
     try:
         conn = get_connection()
@@ -298,6 +333,7 @@ def call_tool(name: str, arguments: dict) -> str:
         "get_crowd_stats":      get_crowd_stats,
         "get_group_stats":      get_group_stats,
         "get_trend":            get_trend,
+        "search_memory":        search_memory,
         "run_sql":              run_sql,
     }
     fn = fn_map.get(name)

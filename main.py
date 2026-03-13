@@ -32,10 +32,11 @@ def main():
     parser.add_argument("--report", action="store_true", help="Run agents + generate report")
     parser.add_argument("--all",    action="store_true", help="ETL + report")
     parser.add_argument("--ask",    type=str,            help="Ask a single question about the data")
-    parser.add_argument("--chat",   action="store_true", help="Interactive terminal chat (agentic tool use)")
+    parser.add_argument("--chat",     action="store_true", help="Interactive terminal chat (agentic tool use)")
+    parser.add_argument("--memorize", action="store_true", help="Build ChromaDB memory from processed data")
     args = parser.parse_args()
 
-    if not any([args.etl, args.report, args.all, args.ask, args.chat]):
+    if not any([args.etl, args.report, args.all, args.ask, args.chat, args.memorize]):
         parser.print_help()
         return
 
@@ -44,6 +45,12 @@ def main():
         logger.info("Starting ETL …")
         from etl import run_etl
         run_etl(force=args.force)
+
+    # ── Memory (ChromaDB daily summaries) ────────────────────────────────────
+    if args.memorize:
+        logger.info("Building ChromaDB memory …")
+        from memory import memorize_all
+        memorize_all(force=args.force)
 
     # ── Interactive chat (agentic, MCP-style tool use) ────────────────────────
     if args.chat:

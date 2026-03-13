@@ -6,3 +6,5 @@ module load python/3.11.5 scipy-stack/2024a StdEnv/2023 arrow/17.0.0
 source ENV/bin/activate
 
 export GROQ_API_KEY="your-groq-api-key-here"  # get free key at console.groq.com
+export COUCHE_SCRATCH="/home/zahrav/scratch/couche"  # Lustre scratch — fast I/O, no NFS limits
+export CHROMA_CACHE_DIR="/home/zahrav/scratch/couche/chroma_cache"  # ChromaDB model cache

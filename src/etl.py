@@ -4,6 +4,7 @@ ETL: Unzip daily JSON files, flatten to two Parquet tables per day.
   - processed/events/events_YYYY-MM-DD.parquet  (one row per tracking event)
 """
 
+import os
 import zipfile
 import json
 import re
@@ -17,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
-PROCESSED_DIR = BASE_DIR / "processed"
+_scratch = os.environ.get("COUCHE_SCRATCH")
+PROCESSED_DIR = Path(_scratch) / "processed" if _scratch else BASE_DIR / "processed"
 
 
 def _parse_point(s):

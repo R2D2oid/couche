@@ -3,11 +3,13 @@ DuckDB helper — creates in-memory views over all Parquet files so every
 agent can query the full dataset with plain SQL.
 """
 
+import os
 from pathlib import Path
 import duckdb
 
 BASE_DIR = Path(__file__).parent.parent
-PROCESSED_DIR = BASE_DIR / "processed"
+_scratch = os.environ.get("COUCHE_SCRATCH")
+PROCESSED_DIR = Path(_scratch) / "processed" if _scratch else BASE_DIR / "processed"
 
 
 def get_connection() -> duckdb.DuckDBPyConnection:

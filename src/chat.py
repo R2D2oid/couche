@@ -90,6 +90,8 @@ def _run_agent(user_question: str, history: list) -> str:
 
             print(f"  [calling {tool_name}({', '.join(f'{k}={v}' for k,v in arguments.items())})]")
             result = call_tool(tool_name, arguments)
+            if len(result) > 3000:
+                result = result[:3000] + "\n... [truncated]"
 
             messages.append({
                 "role":         "tool",

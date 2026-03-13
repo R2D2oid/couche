@@ -58,15 +58,16 @@ def _detect_groups(tracks: pd.DataFrame) -> pd.DataFrame:
                    "duration_seconds", "zone_count", "poi_count", "date", "entrance"]]
 
 
-def analyze_groups() -> dict:
+def analyze_groups(date_filter: str | None = None) -> dict:
     conn = get_connection()
     results = {}
+    date_clause = f"AND date = '{date_filter}'" if date_filter else ""
 
-    tracks = conn.execute("""
+    tracks = conn.execute(f"""
         SELECT master_track_id, entrance, exit, is_buyer, is_staff,
                duration_seconds, zone_count, poi_count, date, gender
         FROM tracks
-        WHERE NOT is_staff AND entrance IS NOT NULL
+        WHERE NOT is_staff AND entrance IS NOT NULL {date_clause}
     """).df()
 
     tracks["entrance"] = pd.to_datetime(tracks["entrance"])
