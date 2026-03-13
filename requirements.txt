@@ -1,0 +1,4 @@
+# packages available via Compute Canada wheelhouse (pip install --no-index)
+numpy
+pandas
+duckdb

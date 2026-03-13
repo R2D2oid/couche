@@ -1,0 +1,26 @@
+# Environment
+ENV/
+
+# Data (large files, not for git)
+data/
+processed/
+
+# Reports output
+reports/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+
+# Secrets
+activate.sh
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
