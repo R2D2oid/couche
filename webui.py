@@ -33,7 +33,8 @@ def chat_fn(message: str, history: list) -> str:
 
 demo = gr.ChatInterface(
     fn=chat_fn,
-title="Couche-Tard Retail Analytics",
+    analytics_enabled=False,
+    title="Couche-Tard Retail Analytics",
     description=(
         "Ask questions about visitor behaviour at the McGill Innovation Lab store "
         "(Nov 2025 – Mar 2026). Powered by Groq / LLaMA 3.3 70B with live data tools."
@@ -54,4 +55,4 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=7860)
     args = parser.parse_args()
 
-    demo.launch(share=args.share, server_port=args.port, show_api=False, analytics_enabled=False)
+    demo.launch(share=args.share, server_port=args.port)
